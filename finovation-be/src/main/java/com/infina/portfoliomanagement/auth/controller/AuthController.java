@@ -1,0 +1,95 @@
+package com.infina.portfoliomanagement.auth.controller;
+
+import com.infina.portfoliomanagement.auth.controller.docs.AuthControllerDocs;
+import com.infina.portfoliomanagement.auth.dto.*;
+import com.infina.portfoliomanagement.auth.service.AuthenticatedPasswordService;
+import com.infina.portfoliomanagement.auth.service.AuthService;
+import com.infina.portfoliomanagement.auth.service.PasswordResetService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/v1/auth")
+@RequiredArgsConstructor
+public class AuthController implements AuthControllerDocs {
+
+    private final AuthService authService;
+    private final PasswordResetService passwordResetService;
+    private final AuthenticatedPasswordService authenticatedPasswordService;
+
+    @Override
+    @PostMapping("/login")
+    public ResponseEntity<LoginResponse> login(
+            @Valid @RequestBody LoginRequest request
+    ) {
+        return ResponseEntity.ok(authService.login(request));
+    }
+
+    @Override
+    @PostMapping("/refresh")
+    public ResponseEntity<LoginResponse> refreshToken(
+            @Valid @RequestBody RefreshTokenRequest request
+    ) {
+        return ResponseEntity.ok(authService.refreshToken(request));
+    }
+
+    @Override
+    @GetMapping("/me")
+    public ResponseEntity<MeResponse> getCurrentUser(
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        return ResponseEntity.ok(
+                authService.getCurrentUser(userDetails.getUsername())
+        );
+    }
+
+    @Override
+    @PutMapping("/password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void changePassword(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @Valid @RequestBody PasswordChangeRequest request
+    ) {
+        authenticatedPasswordService.changePassword(userDetails.getUsername(), request);
+    }
+
+    @PostMapping("/logout")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void logout(
+            @Valid @RequestBody LogoutRequest request) {
+
+        authService.logout(request);
+
+    }
+
+    @Override
+    @PostMapping("/password-reset/request")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void requestPasswordReset(
+            @Valid @RequestBody PasswordResetStartRequest request
+    ) {
+        passwordResetService.requestOtp(request);
+    }
+
+    @Override
+    @PostMapping("/password-reset/verify")
+    public ResponseEntity<PasswordResetVerifyResponse> verifyPasswordResetOtp(
+            @Valid @RequestBody PasswordResetVerifyRequest request
+    ) {
+        return ResponseEntity.ok(passwordResetService.verifyOtp(request));
+    }
+
+    @Override
+    @PostMapping("/password-reset/reset")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void resetPassword(
+            @Valid @RequestBody PasswordResetRequest request
+    ) {
+        passwordResetService.resetPassword(request);
+    }
+}

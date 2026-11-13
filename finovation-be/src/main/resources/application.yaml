@@ -1,0 +1,172 @@
+spring:
+  application:
+    name: finovation
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:true}
+          starttls:
+            enable: ${MAIL_STARTTLS_ENABLED:true}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+
+financial-time:
+  simulation-enabled: ${FINANCIAL_TIME_SIMULATION_ENABLED:true}
+  system-anchor-date: ${FINANCIAL_TIME_SYSTEM_ANCHOR_DATE:2026-08-10}
+  financial-anchor-date: ${FINANCIAL_TIME_FINANCIAL_ANCHOR_DATE:2025-05-28}
+  zone: ${FINANCIAL_TIME_ZONE:Europe/Istanbul}
+
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:15m}
+  refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:15h}
+
+infina:
+  base-url: ${INFINA_BASE_URL}
+  api-key: ${INFINA_API_KEY}
+  connect-timeout: 5s
+  read-timeout: 15s
+
+fund-engine:
+  base-url: ${FUND_ENGINE_BASE_URL:http://localhost:8000}
+  api-key: ${AI_ENGINE_API_KEY:}
+  expected-model-snapshot: ${FUND_ENGINE_EXPECTED_MODEL_SNAPSHOT:FROZEN_2025-05-29_V3}
+  connect-timeout: 5s
+  read-timeout: 60s
+
+ai:
+  engine:
+    base-url: ${AI_ENGINE_BASE_URL:http://localhost:8000}
+    api-key: ${AI_ENGINE_API_KEY:test-token}
+
+fund:
+  monitoring:
+    policy-rate-percent: ${TCMB_POLICY_RATE_PERCENT:37}
+
+marketdata:
+  sync:
+    reference-cron: ${MARKETDATA_REFERENCE_SYNC_CRON:0 0 7 * * *}
+    price-cron: ${MARKETDATA_PRICE_SYNC_CRON:0 30 9,19 * * *}
+    price-deep-refresh-cron: ${MARKETDATA_PRICE_DEEP_REFRESH_CRON:0 0 4 * * SUN}
+    price-lookback-days: ${MARKETDATA_PRICE_LOOKBACK_DAYS:30}
+    price-deep-lookback-days: ${MARKETDATA_PRICE_DEEP_LOOKBACK_DAYS:365}
+    history-start: ${MARKETDATA_HISTORY_START:1990-01-01}
+    bootstrap-on-startup: ${MARKETDATA_BOOTSTRAP_ON_STARTUP:true}
+
+resilience4j:
+  ratelimiter:
+    instances:
+      infina:
+        limit-for-period: 30
+        limit-refresh-period: 1s
+        timeout-duration: 5s
+  retry:
+    instances:
+      infina:
+        max-attempts: 4
+        wait-duration: 500ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - org.springframework.web.client.HttpServerErrorException
+          - org.springframework.web.client.HttpClientErrorException$TooManyRequests
+      fund-engine:
+        max-attempts: 3
+        wait-duration: 1s
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - org.springframework.web.client.HttpServerErrorException$ServiceUnavailable
+          - org.springframework.web.client.ResourceAccessException
+  circuitbreaker:
+    instances:
+      infina:
+        sliding-window-size: 20
+        minimum-number-of-calls: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 2
+        automatic-transition-from-open-to-half-open-enabled: true
+        ignore-exceptions:
+          - com.infina.portfoliomanagement.common.exception.BaseException
+      fund-engine:
+        sliding-window-size: 20
+        minimum-number-of-calls: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 2
+        automatic-transition-from-open-to-half-open-enabled: true
+        ignore-exceptions:
+          - com.infina.portfoliomanagement.common.exception.BaseException
+
+auth:
+  password-reset:
+    secret: ${PASSWORD_RESET_SECRET:${JWT_SECRET}}
+    sender: ${MAIL_FROM:${MAIL_USERNAME:}}
+    otp-expiration: ${PASSWORD_RESET_OTP_EXPIRATION:10m}
+    reset-token-expiration: ${PASSWORD_RESET_TOKEN_EXPIRATION:10m}
+    resend-cooldown: ${PASSWORD_RESET_RESEND_COOLDOWN:1m}
+    max-attempts: ${PASSWORD_RESET_MAX_ATTEMPTS:5}
+    ip-rate-limit:
+      request-window: ${PASSWORD_RESET_REQUEST_IP_WINDOW:1m}
+      request-max-attempts: ${PASSWORD_RESET_REQUEST_IP_MAX_ATTEMPTS:5}
+      verify-window: ${PASSWORD_RESET_VERIFY_IP_WINDOW:1m}
+      verify-max-attempts: ${PASSWORD_RESET_VERIFY_IP_MAX_ATTEMPTS:10}
+  login-rate-limit:
+    window: ${LOGIN_RATE_LIMIT_WINDOW:1m}
+    max-attempts: ${LOGIN_RATE_LIMIT_MAX_ATTEMPTS:5}
+  refresh-rate-limit:
+    window: ${REFRESH_RATE_LIMIT_WINDOW:1m}
+    max-attempts: ${REFRESH_RATE_LIMIT_MAX_ATTEMPTS:30}
+
+management:
+  server:
+    port: 8081
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    tags:
+      application: ${spring.application.name}
+rl:
+  base-url: ${RL_BASE_URL:http://localhost:8000}
+  inference-path: /api/v1/rl/inference
+  model: PPO_ADAPTIVE_RECOVERY
+  api-key: ${AI_ENGINE_API_KEY:}

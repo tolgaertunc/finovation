@@ -1,0 +1,24 @@
+.DS_Store
+.env
+.env.production
+.idea/
+/tmp/
+/data-export/
+/data-export 2/
+/data-export.zip
+/docs/
+/deliverables/
+/target/
+**/target/
+
+# Local Codex project context and working instructions.
+AGENTS.md
+finovation-be/AGENTS.md
+finovation-fe/AGENTS.md
+docs/PROJECT_CONTEXT.md
+
+
+# Alertmanager receiver secrets. Keep the example file versioned.
+monitoring/alertmanager/secrets/*
+!monitoring/alertmanager/secrets/.gitkeep
+!monitoring/alertmanager/secrets/slack_webhook_url.example

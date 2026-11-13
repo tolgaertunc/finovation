@@ -1,0 +1,207 @@
+.page {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 1.6rem 1.25rem 2.5rem;
+}
+
+.pageWide {
+  max-width: 1400px;
+}
+
+.header {
+  margin-bottom: 0.65rem;
+}
+
+.headerTopline {
+  display: flex;
+  align-items: flex-start;
+}
+
+.navigationRow {
+  margin-bottom: 1.5rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.4rem;
+  color: #168c76;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.content {
+  animation: contentEnter 0.38s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.title {
+  margin: 0;
+  color: #0f1f3c;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.steps {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin: 0;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid #e8eff1;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 5px 18px rgba(15, 32, 64, 0.035);
+  list-style: none;
+}
+
+.step {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  color: #8090a0;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.step:not(:last-child)::after {
+  content: "";
+  flex: 1 1 auto;
+  height: 1px;
+  min-width: 0.75rem;
+  margin: 0 0.4rem 0 0.15rem;
+  background: #dbe4ea;
+}
+
+.stepCurrent {
+  color: #0f1f3c;
+  font-weight: 700;
+}
+
+.stepDone {
+  color: #3d5163;
+}
+
+.stepClickable {
+  color: #3d5163;
+}
+
+.stepButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0.28rem 0.45rem 0.28rem 0.28rem;
+  margin: -0.28rem -0.45rem -0.28rem -0.28rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.stepButton:hover {
+  border-color: rgba(46, 196, 167, 0.35);
+  background: rgba(46, 196, 167, 0.1);
+  box-shadow: 0 1px 2px rgba(15, 32, 64, 0.04);
+}
+
+.stepButton:active {
+  background: rgba(46, 196, 167, 0.16);
+}
+
+.stepButton:focus-visible {
+  outline: 2px solid #2ec4a7;
+  outline-offset: 2px;
+}
+
+.stepButton:hover .stepIndex {
+  transform: scale(1.06);
+}
+
+.stepIndex {
+  display: inline-flex;
+  width: 1.4rem;
+  height: 1.4rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid #d5e0e6;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  transition: transform 0.15s ease;
+}
+
+.stepCurrent .stepIndex {
+  border-color: #2ec4a7;
+  color: #2ec4a7;
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(46, 196, 167, 0.12);
+}
+
+.stepDone .stepIndex,
+.stepClickable .stepIndex {
+  border-color: #2ec4a7;
+  color: #fff;
+  background: #2ec4a7;
+}
+
+.stepLabel {
+  overflow: hidden;
+  flex: 0 1 auto;
+  max-width: 7.5rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes contentEnter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 800px) {
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem 0.5rem;
+  }
+
+  .step {
+    flex: none;
+  }
+
+  .step::after {
+    display: none;
+  }
+
+  .stepLabel {
+    max-width: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .headerTopline {
+    flex-direction: column;
+  }
+
+  .steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  .content { animation: none; }
+}

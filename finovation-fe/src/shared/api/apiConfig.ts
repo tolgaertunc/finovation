@@ -1,0 +1,295 @@
+const configuredApiUrl = import.meta.env.VITE_API_BASE_URL?.trim()
+
+export const API_BASE_URL = configuredApiUrl?.replace(/\/$/, "") || "/api"
+
+export const API_PATHS = {
+  login: import.meta.env.VITE_LOGIN_PATH?.trim() || "/v1/auth/login",
+  refresh: import.meta.env.VITE_REFRESH_PATH?.trim() || "/v1/auth/refresh",
+  logout: import.meta.env.VITE_LOGOUT_PATH?.trim() || "/v1/auth/logout",
+  me: import.meta.env.VITE_ME_PATH?.trim() || "/v1/auth/me",
+  passwordChange:
+      import.meta.env.VITE_PASSWORD_CHANGE_PATH?.trim() || "/v1/auth/password",
+  users: import.meta.env.VITE_USERS_PATH?.trim() || "/v1/users",
+  companies: import.meta.env.VITE_COMPANIES_PATH?.trim() || "/v1/companies",
+  passwordResetRequest:
+      import.meta.env.VITE_PASSWORD_RESET_REQUEST_PATH?.trim() ||
+      "/v1/auth/password-reset/request",
+  passwordResetVerify:
+      import.meta.env.VITE_PASSWORD_RESET_VERIFY_PATH?.trim() ||
+      "/v1/auth/password-reset/verify",
+  passwordReset:
+      import.meta.env.VITE_PASSWORD_RESET_PATH?.trim() ||
+      "/v1/auth/password-reset/reset",
+  fundDrafts:
+      import.meta.env.VITE_FUND_DRAFTS_PATH?.trim() || "/v1/fund-drafts",
+  funds: import.meta.env.VITE_FUNDS_PATH?.trim() || "/v1/funds",
+  optimizationRequests:
+      import.meta.env.VITE_OPTIMIZATION_REQUESTS_PATH?.trim() ||
+      "/v1/optimization-requests",
+  stressScenarios:
+      import.meta.env.VITE_STRESS_SCENARIOS_PATH?.trim() ||
+      "/v1/stress-scenarios",
+  stressTests:
+      import.meta.env.VITE_STRESS_TESTS_PATH?.trim() ||
+      "/v1/stress-tests",
+  investmentUniverse:
+      import.meta.env.VITE_INVESTMENT_UNIVERSE_PATH?.trim() ||
+      "/v1/investment-universe",
+  systemLogs:
+      import.meta.env.VITE_SYSTEM_LOGS_PATH?.trim() || "/v1/system-logs",
+
+  dashboard:
+      import.meta.env.VITE_DASHBOARD_PATH?.trim() || "/v1/dashboard",
+} as const
+
+function normalizePath(path: string): string {
+  return path.startsWith("/") ? path : `/${path}`
+}
+
+function buildUrl(path: string): string {
+  return `${API_BASE_URL}${normalizePath(path)}`
+}
+
+export function getLoginUrl(): string {
+  return buildUrl(API_PATHS.login)
+}
+
+export function getMeUrl(): string {
+  return buildUrl(API_PATHS.me)
+}
+
+export function getRefreshUrl(): string {
+  return buildUrl(API_PATHS.refresh)
+}
+
+export function getLogoutUrl(): string {
+  return buildUrl(API_PATHS.logout)
+}
+
+export function getPasswordChangeUrl(): string {
+  return buildUrl(API_PATHS.passwordChange)
+}
+
+export function getUsersUrl(userId?: number): string {
+  const base = buildUrl(API_PATHS.users)
+  return userId == null ? base : `${base}/${userId}`
+}
+
+export function getCompaniesUrl(companyId?: number): string {
+  const base = buildUrl(API_PATHS.companies)
+  return companyId == null ? base : `${base}/${companyId}`
+}
+
+export function getPasswordResetRequestUrl(): string {
+  return buildUrl(API_PATHS.passwordResetRequest)
+}
+
+export function getPasswordResetVerifyUrl(): string {
+  return buildUrl(API_PATHS.passwordResetVerify)
+}
+
+export function getPasswordResetUrl(): string {
+  return buildUrl(API_PATHS.passwordReset)
+}
+
+export function getFundDraftsUrl(): string {
+  return buildUrl(API_PATHS.fundDrafts)
+}
+
+export function getFundDraftInitUrl(
+    page: string,
+    draftId?: string,
+): string {
+  const params = new URLSearchParams({ page })
+  if (draftId) {
+    params.set("draftId", draftId)
+  }
+  return `${getFundDraftsUrl()}/init?${params.toString()}`
+}
+
+export function getFundDraftUrl(draftId: string): string {
+  return `${getFundDraftsUrl()}/${encodeURIComponent(draftId)}`
+}
+
+export function getArchivedFundDraftsUrl(): string {
+  return `${getFundDraftsUrl()}/archived`
+}
+
+export function getFundDraftCompletionUrl(draftId: string): string {
+  return buildUrl(`${API_PATHS.fundDrafts}/${draftId}/completion`)
+}
+
+export function getFundEstimatesUrl(draftId: string): string {
+  return buildUrl(`${API_PATHS.fundDrafts}/${draftId}/estimates`)
+}
+
+export function getFundDraftPortfolioRulesUrl(draftId: string): string {
+  return `${getFundDraftsUrl()}/${encodeURIComponent(draftId)}/portfolio-rules`
+}
+
+export function getFundDraftAnalysisUrl(draftId: string): string {
+  return `${getFundDraftsUrl()}/${encodeURIComponent(draftId)}/analysis`
+}
+
+export function getFundDraftSelectedProposalUrl(draftId: string): string {
+  return `${getFundDraftsUrl()}/${encodeURIComponent(draftId)}/selected-proposal`
+}
+
+export function getFundDraftWorkingPortfolioUrl(draftId: string): string {
+  return `${getFundDraftsUrl()}/${encodeURIComponent(draftId)}/working-portfolio`
+}
+
+export function getFundDraftModelUniverseUrl(): string {
+  return `${getFundDraftsUrl()}/model-universe`
+}
+
+export function getFundsUrl(): string {
+  return buildUrl(API_PATHS.funds)
+}
+
+export function getUserFundsUrl(ownerUserId: number): string {
+  const params = new URLSearchParams({
+    ownerUserId: String(ownerUserId),
+  })
+
+  return `${getFundsUrl()}?${params.toString()}`
+}
+
+export function getFundMonitoringUrl(fundId: string): string {
+  return `${getFundsUrl()}/${encodeURIComponent(fundId)}/monitoring`
+}
+
+export function getDashboardSummaryUrl(): string {
+  return `${buildUrl(API_PATHS.dashboard)}/summary`
+}
+
+export function getOptimizationRequestsUrl(
+    fundId?: string,
+): string {
+  const base = buildUrl(API_PATHS.optimizationRequests)
+
+  return fundId == null
+      ? base
+      : `${base}?fundId=${encodeURIComponent(fundId)}`
+}
+
+export function getOptimizableFundsUrl(): string {
+  return `${buildUrl(API_PATHS.optimizationRequests)}/funds`
+}
+
+export function getOptimizationLogsUrl(): string {
+  return `${buildUrl(API_PATHS.optimizationRequests)}/logs`
+}
+
+export function getOptimizationFundPositionsUrl(
+    fundId: string,
+): string {
+  return `${buildUrl(
+      API_PATHS.optimizationRequests,
+  )}/funds/${encodeURIComponent(fundId)}/current-positions`
+}
+
+export function getOptimizationRequestUrl(
+    requestId: number,
+): string {
+  return `${buildUrl(API_PATHS.optimizationRequests)}/${requestId}`
+}
+
+export function getOptimizationRequestRunUrl(
+    requestId: number,
+): string {
+  return `${getOptimizationRequestUrl(requestId)}/run`
+}
+
+export function getOptimizationRequestResultUrl(
+    requestId: number,
+): string {
+  return `${getOptimizationRequestUrl(requestId)}/result`
+}
+
+export function getOptimizationRequestApproveUrl(
+    requestId: number,
+): string {
+  return `${getOptimizationRequestUrl(requestId)}/approve`
+}
+
+export function getOptimizationRequestRejectUrl(
+    requestId: number,
+): string {
+  return `${getOptimizationRequestUrl(requestId)}/reject`
+}
+
+export function getInvestmentUniverseUrl(): string {
+  return buildUrl(API_PATHS.investmentUniverse)
+}
+
+export function getStressScenariosUrl(): string {
+  return buildUrl(API_PATHS.stressScenarios)
+}
+
+export function getStressTestsUrl(): string {
+  return buildUrl(API_PATHS.stressTests)
+}
+
+export function getStressTestUrl(testId: string): string {
+  return `${getStressTestsUrl()}/${encodeURIComponent(testId)}`
+}
+
+export function getStressTestAssetPathUrl(
+    testId: string,
+    assetCode: string,
+): string {
+  return `${getStressTestUrl(
+      testId,
+  )}/path/${encodeURIComponent(assetCode)}`
+}
+
+export function getStressTestSectorsUrl(
+    testId: string,
+): string {
+  return `${getStressTestUrl(testId)}/sectors`
+}
+
+export function getStressTestPortfolioPathUrl(
+    testId: string,
+): string {
+  return `${getStressTestUrl(testId)}/portfolio-path`
+}
+
+export function getStressTestRiskMetricsUrl(
+    testId: string,
+): string {
+  return `${getStressTestUrl(testId)}/risk-metrics`
+}
+
+export function getStressTestSectorPathsUrl(
+    testId: string,
+): string {
+  return `${getStressTestUrl(testId)}/sector-paths`
+}
+export function getRlStressTestsUrl(): string {
+  return `${getStressTestsUrl()}/rl`
+}
+
+export function getRlStressTestCompatibilityUrl(
+    fundId: string,
+): string {
+  return `${getRlStressTestsUrl()}/compatibility/${encodeURIComponent(fundId)}`
+}
+export function getRlStressTestHistoryUrl(): string {
+  return `${getRlStressTestsUrl()}/history`
+}
+
+export function getRlStressTestDetailUrl(
+    testId: string,
+): string {
+  return `${getRlStressTestsUrl()}/${encodeURIComponent(testId)}`
+}
+export function getRlStressTestDeleteUrl(
+    testId: string,
+): string {
+  return `${getRlStressTestsUrl()}/${encodeURIComponent(testId)}`
+}
+export function getSystemLogsUrl(): string {
+  return buildUrl(API_PATHS.systemLogs)
+}

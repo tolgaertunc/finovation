@@ -1,0 +1,22 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+ai:
+  engine:
+    base-url: ${AI_ENGINE_BASE_URL:http://fund-engine:8000}
+
+marketdata:
+  sync:
+    enabled: ${MARKETDATA_SYNC_ENABLED:true}
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

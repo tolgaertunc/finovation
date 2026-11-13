@@ -1,0 +1,340 @@
+name: finovation
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    platform: linux/amd64
+    container_name: finovation-sqlserver
+
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+
+    ports:
+      - "1433:1433"
+
+    volumes:
+      - finovation_mssql_data:/var/opt/mssql
+
+    restart: unless-stopped
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q \"SELECT 1\" || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
+
+
+  mssql-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    platform: linux/amd64
+    container_name: finovation-sqlserver-init
+
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+    environment:
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+      DB_NAME: ${DB_NAME:-finovation}
+
+    restart: "no"
+
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        set -e
+        echo "Creating database if it does not exist: $$DB_NAME"
+
+        /opt/mssql-tools18/bin/sqlcmd \
+          -S sqlserver \
+          -U sa \
+          -P "$$MSSQL_SA_PASSWORD" \
+          -C \
+          -Q "IF DB_ID('$$DB_NAME') IS NULL CREATE DATABASE [$$DB_NAME];"
+
+        echo "Database ready: $$DB_NAME"
+
+
+  redis:
+    image: redis:7-alpine
+    container_name: finovation-redis
+
+    ports:
+      - "6380:6379"
+
+    volumes:
+      - finovation_redis_data:/data
+
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+
+  fund-engine:
+    build:
+      context: ./finovation-ai
+      dockerfile: Dockerfile
+
+    container_name: finovation-fund-engine
+
+    expose:
+      - "8000"
+
+    ports:
+      - "127.0.0.1:8000:8000"
+
+    restart: unless-stopped
+
+    environment:
+      - FUND_ML_API_KEY=${AI_ENGINE_API_KEY:-}
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/health/ready', timeout=3)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+
+
+  backend:
+    build:
+      context: ./finovation-be
+      dockerfile: Dockerfile
+
+    container_name: finovation-backend
+
+    environment:
+      DB_URL: "jdbc:sqlserver://sqlserver:1433;databaseName=${DB_NAME:-finovation};encrypt=true;trustServerCertificate=true"
+      DB_USERNAME: sa
+      DB_PASSWORD: ${MSSQL_SA_PASSWORD}
+
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+      AI_ENGINE_BASE_URL: http://fund-engine:8000
+      AI_ENGINE_API_KEY: ${AI_ENGINE_API_KEY:-}
+      RL_BASE_URL: ${RL_BASE_URL:-http://fund-engine:8000}
+
+      INFINA_BASE_URL: ${INFINA_BASE_URL:?INFINA_BASE_URL must be set in .env}
+      INFINA_API_KEY: ${INFINA_API_KEY:?INFINA_API_KEY must be set in .env}
+
+      FUND_ENGINE_BASE_URL: ${FUND_ENGINE_BASE_URL:-http://fund-engine:8000}
+      FUND_ENGINE_EXPECTED_MODEL_SNAPSHOT: ${FUND_ENGINE_EXPECTED_MODEL_SNAPSHOT:-FROZEN_2025-05-29_V3}
+
+      FUND_MIN_INITIAL_PORTFOLIO_SIZE: ${FUND_MIN_INITIAL_PORTFOLIO_SIZE:-1000000}
+      FUND_MAX_INITIAL_PORTFOLIO_SIZE: ${FUND_MAX_INITIAL_PORTFOLIO_SIZE:-100000000000}
+
+      FINANCIAL_TIME_SIMULATION_ENABLED: ${FINANCIAL_TIME_SIMULATION_ENABLED:-true}
+      FINANCIAL_TIME_SYSTEM_ANCHOR_DATE: ${FINANCIAL_TIME_SYSTEM_ANCHOR_DATE:-2026-08-10}
+      FINANCIAL_TIME_FINANCIAL_ANCHOR_DATE: ${FINANCIAL_TIME_FINANCIAL_ANCHOR_DATE:-2025-05-29}
+      FINANCIAL_TIME_ZONE: ${FINANCIAL_TIME_ZONE:-Europe/Istanbul}
+
+      MARKETDATA_REFERENCE_SYNC_CRON: "${MARKETDATA_REFERENCE_SYNC_CRON:-0 0 7 * * *}"
+      MARKETDATA_PRICE_SYNC_CRON: "${MARKETDATA_PRICE_SYNC_CRON:-0 30 9,19 * * *}"
+      MARKETDATA_PRICE_DEEP_REFRESH_CRON: "${MARKETDATA_PRICE_DEEP_REFRESH_CRON:-0 0 4 * * SUN}"
+      MARKETDATA_PRICE_LOOKBACK_DAYS: ${MARKETDATA_PRICE_LOOKBACK_DAYS:-30}
+      MARKETDATA_PRICE_DEEP_LOOKBACK_DAYS: ${MARKETDATA_PRICE_DEEP_LOOKBACK_DAYS:-365}
+      MARKETDATA_HISTORY_START: ${MARKETDATA_HISTORY_START:-1990-01-01}
+      MARKETDATA_BOOTSTRAP_ON_STARTUP: ${MARKETDATA_BOOTSTRAP_ON_STARTUP:-true}
+
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ACCESS_TOKEN_EXPIRATION: ${JWT_ACCESS_TOKEN_EXPIRATION:-15m}
+      JWT_REFRESH_TOKEN_EXPIRATION: ${JWT_REFRESH_TOKEN_EXPIRATION:-15h}
+
+      PASSWORD_RESET_SECRET: ${PASSWORD_RESET_SECRET:-${JWT_SECRET}}
+      PASSWORD_RESET_OTP_EXPIRATION: ${PASSWORD_RESET_OTP_EXPIRATION:-10m}
+      PASSWORD_RESET_TOKEN_EXPIRATION: ${PASSWORD_RESET_TOKEN_EXPIRATION:-10m}
+      PASSWORD_RESET_RESEND_COOLDOWN: ${PASSWORD_RESET_RESEND_COOLDOWN:-1m}
+      PASSWORD_RESET_MAX_ATTEMPTS: ${PASSWORD_RESET_MAX_ATTEMPTS:-5}
+
+      LOGIN_RATE_LIMIT_WINDOW: ${LOGIN_RATE_LIMIT_WINDOW:-1m}
+      LOGIN_RATE_LIMIT_MAX_ATTEMPTS: ${LOGIN_RATE_LIMIT_MAX_ATTEMPTS:-5}
+
+      PASSWORD_RESET_REQUEST_IP_WINDOW: ${PASSWORD_RESET_REQUEST_IP_WINDOW:-1m}
+      PASSWORD_RESET_REQUEST_IP_MAX_ATTEMPTS: ${PASSWORD_RESET_REQUEST_IP_MAX_ATTEMPTS:-5}
+      PASSWORD_RESET_VERIFY_IP_WINDOW: ${PASSWORD_RESET_VERIFY_IP_WINDOW:-1m}
+      PASSWORD_RESET_VERIFY_IP_MAX_ATTEMPTS: ${PASSWORD_RESET_VERIFY_IP_MAX_ATTEMPTS:-10}
+
+      REFRESH_RATE_LIMIT_WINDOW: ${REFRESH_RATE_LIMIT_WINDOW:-1m}
+      REFRESH_RATE_LIMIT_MAX_ATTEMPTS: ${REFRESH_RATE_LIMIT_MAX_ATTEMPTS:-30}
+
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:?MAIL_USERNAME must be set in .env}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:?MAIL_PASSWORD must be set in .env}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-true}
+      MAIL_STARTTLS_ENABLED: ${MAIL_STARTTLS_ENABLED:-true}
+      MAIL_FROM: ${MAIL_FROM:-${MAIL_USERNAME}}
+
+    ports:
+      - "8080:8080"
+
+    expose:
+      - "8081"
+
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      mssql-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      fund-engine:
+        condition: service_healthy
+
+    restart: unless-stopped
+
+
+  frontend:
+    build:
+      context: ./finovation-fe
+      dockerfile: Dockerfile
+
+    container_name: finovation-frontend
+
+    environment:
+      VITE_API_BASE_URL: /api
+      VITE_LOGIN_PATH: /v1/auth/login
+      VITE_DEV_PROXY_TARGET: http://backend:8080
+      CHOKIDAR_USEPOLLING: "true"
+
+    ports:
+      - "5173:5173"
+
+    volumes:
+      - ./finovation-fe/src:/app/src
+      - ./finovation-fe/index.html:/app/index.html
+      - ./finovation-fe/tsconfig.json:/app/tsconfig.json
+      - ./finovation-fe/vite.config.ts:/app/vite.config.ts
+
+    depends_on:
+      - backend
+
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: finovation-prometheus
+
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/rules:/etc/prometheus/rules:ro
+      - ./monitoring/prometheus/tests:/etc/prometheus/tests:ro
+      - finovation_prometheus_data:/prometheus
+
+    depends_on:
+      - backend
+      - alertmanager
+
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:v0.32.1
+    container_name: finovation-alertmanager
+
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+      - --web.external-url=http://localhost:9093
+      - --enable-feature=utf8-strict-mode
+
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ./monitoring/alertmanager/templates:/etc/alertmanager/templates:ro
+      - finovation_alertmanager_data:/alertmanager
+
+    secrets:
+      - alertmanager_slack_webhook_url
+
+    ports:
+      - "127.0.0.1:9093:9093"
+
+    restart: unless-stopped
+  loki:
+    image: grafana/loki:3.7.0
+    container_name: finovation-loki
+
+    command:
+      - -config.file=/etc/loki/loki-config.yml
+
+    volumes:
+      - ./monitoring/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - finovation_loki_data:/loki
+
+    ports:
+      - "127.0.0.1:3100:3100"
+
+    restart: unless-stopped
+
+
+  alloy:
+    image: grafana/alloy:latest
+    container_name: finovation-alloy
+
+    command:
+      - run
+      - /etc/alloy/config.alloy
+
+    volumes:
+      - ./monitoring/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+    depends_on:
+      - loki
+
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: finovation-grafana
+
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - finovation_grafana_data:/var/lib/grafana
+
+    ports:
+      - "3000:3000"
+
+    depends_on:
+      - prometheus
+
+    restart: unless-stopped
+
+
+volumes:
+  finovation_mssql_data:
+  finovation_redis_data:
+  finovation_prometheus_data:
+  finovation_alertmanager_data:
+  finovation_grafana_data:
+  finovation_loki_data:
+
+secrets:
+  alertmanager_slack_webhook_url:
+    file: ./monitoring/alertmanager/secrets/slack_webhook_url
